@@ -5,11 +5,13 @@ export default defineConfig({
     outDir: 'dist',
     rollupOptions: {
       input: {
-        content: 'src/main.ts', // 指定主入口文件
+        content: 'src/main.ts', // 内容脚本入口
+        popup: 'src/popup.ts'   // 弹出页面入口
       },
       output: {
-        entryFileNames: '[name].js',
-        format: 'iife', // 使用 iife 格式使其直接在浏览器中运行
+        entryFileNames: '[name].js', // 保持文件名一致
+        format: 'es',               // 使用 iife 格式
+        inlineDynamicImports: false,
       },
     },
   },
