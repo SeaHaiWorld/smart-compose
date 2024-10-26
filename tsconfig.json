@@ -2,15 +2,13 @@
   "compilerOptions": {
     "target": "esnext",
     "module": "esnext",
-    "strict": true,             // 启用严格模式
     "noImplicitAny": true,      // 避免使用 any 类型
-    "jsx": "react-jsx",         // 支持 React JSX
     "moduleResolution": "node",
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "outDir": "./dist"
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "include": ["src/**/*.ts"],
   "exclude": ["node_modules"]
 }

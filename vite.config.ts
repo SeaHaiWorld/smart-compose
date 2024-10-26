@@ -1,17 +1,16 @@
 import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
 
 export default defineConfig({
-  plugins: [react()],
   build: {
-    lib: {
-      entry: './src/index.tsx',
-      name: 'SmartCompose',
-      fileName: (format) => `smart-compose.${format}.js`,
-    },
+    outDir: 'dist',
     rollupOptions: {
-      external: [], // 外部依赖
+      input: {
+        content: 'src/main.ts', // 指定主入口文件
+      },
+      output: {
+        entryFileNames: '[name].js',
+        format: 'iife', // 使用 iife 格式使其直接在浏览器中运行
+      },
     },
   },
 });
-  

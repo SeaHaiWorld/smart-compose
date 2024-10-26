@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "SmartCompose Extension",
+  "version": "1.0",
+  "description": "Enable SmartCompose in textarea or content editable div",
+  "permissions": ["activeTab"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["dist/content.js"]
+    }
+  ],
+  "host_permissions": ["<all_urls>"]
+}
