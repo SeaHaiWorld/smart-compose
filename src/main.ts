@@ -48,7 +48,7 @@ const handleKeyDown = (event: KeyboardEvent, target: HTMLDivElement) => {
       const selection = window.getSelection();
       const range = selection?.getRangeAt(0);
       if (range) {
-        let innerSpanHtml = completionSpan.innerHTML;
+        const innerSpanHtml = completionSpan.innerHTML;
         completionSpan.remove();
         target.innerHTML += innerSpanHtml; // 使用innerHTML保留格式
 
