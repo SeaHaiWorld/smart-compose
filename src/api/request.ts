@@ -24,9 +24,11 @@ function sendXMLRequest<T>(
 
     // 处理响应
     xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
+      const { status, statusText, responseText } = xhr;
+
+      if (status >= 200 && status < 300) {
         try {
-          const response: T = JSON.parse(xhr.responseText);
+          const response: T = JSON.parse(responseText);
           resolve(response);
         } catch {
           reject(new Error('解析响应失败'));
@@ -34,18 +36,11 @@ function sendXMLRequest<T>(
       } else {
         // 处理错误响应
         try {
-          const errorResponse: XMLRequestError = JSON.parse(xhr.responseText);
-          reject(
-            new Error(
-              `请求失败：${xhr.status} ${xhr.statusText} - ${errorResponse.detail.map((e) => e.msg).join(', ')}`,
-            ),
-          );
+          const errorResponse: XMLRequestError = JSON.parse(responseText);
+          const errorMessages = errorResponse.detail.map(e => e.msg).join(', ');
+          reject(new Error(`请求失败：${status} ${statusText} - ${errorMessages}`));
         } catch {
-          reject(
-            new Error(
-              `请求失败：${xhr.status} ${xhr.statusText} - 无法解析错误响应`,
-            ),
-          );
+          reject(new Error(`请求失败：${status} ${statusText} - 无法解析错误响应`));
         }
       }
     };
@@ -54,8 +49,7 @@ function sendXMLRequest<T>(
       reject(new Error(`请求失败：${xhr.status} ${xhr.statusText}`));
 
     // 发送数据（仅在有数据时发送）
-    const requestData = data ? JSON.stringify(data) : null;
-    xhr.send(requestData);
+    xhr.send(data ? JSON.stringify(data) : null);
   });
 }
 

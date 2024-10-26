@@ -18,7 +18,7 @@ const targetInputSelectors = [
 const handleInput = async (target: HTMLDivElement): Promise<void> => {
   const inputText = target.innerText;
 
-  if (!inputText.length) {
+  if (!inputText) {
     completion = '';
     return;
   }
@@ -39,9 +39,7 @@ const handleKeyDown = (event: KeyboardEvent, target: HTMLDivElement) => {
     event.preventDefault();
 
     // 查找具有特定id的span
-    const completionSpan = document.getElementById(
-      SMART_COMPLETION_SPAN_ID,
-    ) as HTMLSpanElement;
+    const completionSpan = document.getElementById(SMART_COMPLETION_SPAN_ID) as HTMLSpanElement;
 
     if (completionSpan) {
       // 获取当前光标位置的range
@@ -53,7 +51,7 @@ const handleKeyDown = (event: KeyboardEvent, target: HTMLDivElement) => {
         target.innerHTML += innerSpanHtml; // 使用innerHTML保留格式
 
         // 更新光标位置到内容的末尾
-        range.setStartAfter(target?.lastChild ?? range.endContainer);
+        range.setStartAfter(target.lastChild ?? range.endContainer);
         range.collapse(true);
         selection?.removeAllRanges();
         selection?.addRange(range);
@@ -62,27 +60,24 @@ const handleKeyDown = (event: KeyboardEvent, target: HTMLDivElement) => {
 
     completion = '';
   } else {
+    // 删除span
     const completionSpan = document.getElementById(SMART_COMPLETION_SPAN_ID);
-    if (completionSpan) {
-      completionSpan.remove(); // 删除span
-    }
+    completionSpan?.remove();
   }
 };
 
 const addEventHandler = (target: HTMLDivElement) => {
-  if (!target) {
-    return;
-  }
+  if (!target) return;
 
   let isComposing = false;
-  const debouncedInput = debounce(handleInput, 500);
+  const debouncedInput = debounce(() => handleInput(target), 500);
   target.addEventListener('compositionstart', () => {
     isComposing = true; // 开始组合输入
   });
 
   target.addEventListener('compositionend', () => {
     isComposing = false; // 结束组合输入
-    debouncedInput(target); // 结束后手动触发输入处理
+    debouncedInput(); // 结束后手动触发输入处理
   });
 
   target.addEventListener('input', () => {
@@ -96,8 +91,7 @@ const addEventHandler = (target: HTMLDivElement) => {
 
 const setupSmartCompose = async (selector: string): Promise<void> => {
   await transformTextAreaToEditableDiv(selector);
-  let target: HTMLDivElement | null = null;
-  target = document.querySelector(selector) as HTMLDivElement;
+  const target = document.querySelector(selector) as HTMLDivElement;
 
   if (target) {
     addEventHandler(target);
@@ -110,9 +104,7 @@ const listenChromeStorage = () => {
     chrome.storage.sync.get('isEnabled', (data) => {
       console.log('isEnabled', data);
       if (data.isEnabled) {
-        targetInputSelectors.map((selector: string) =>
-          setupSmartCompose(selector),
-        );
+        targetInputSelectors.forEach(setupSmartCompose);
       }
     });
 
@@ -121,16 +113,14 @@ const listenChromeStorage = () => {
       console.log('changes', changes);
       if (changes.isEnabled) {
         if (changes.isEnabled.newValue) {
-          targetInputSelectors.map((selector: string) =>
-            setupSmartCompose(selector),
-          );
+          targetInputSelectors.forEach(setupSmartCompose);
         } else {
           location.reload(); // 关闭时刷新页面以移除效果
         }
       }
     });
   } catch {
-    targetInputSelectors.map((selector: string) => setupSmartCompose(selector));
+    targetInputSelectors.forEach(setupSmartCompose);
   }
 };
 
