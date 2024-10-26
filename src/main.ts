@@ -1,104 +1,81 @@
-import { debounce, transformTextAreaToEditableDiv } from './utils';
+import { fetchSmartCompletion } from './api';
+import {
+  debounce,
+  transformTextAreaToEditableDiv,
+  insertCompletionSpan,
+} from './utils';
 
-let suggestion = '';
+let completion = '';
+const SMART_COMPLETION_SPAN_ID = 'smart-completion-span';
+
+// 需要 smart compose 的元素选择器
+const targetInputSelectors = [
+  '#new_comment_field',
+  '.tiptap',
+  '#contenteditable',
+];
 
 const handleInput = async (target: HTMLDivElement): Promise<void> => {
   const inputText = target.innerText;
 
   if (!inputText.length) {
-    suggestion = '';
+    completion = '';
     return;
   }
 
-  // Mock response
-  const response = {
-    ok: '200',
-    suggestion: 'text completion',
-  };
-
-  if (response.ok) {
-    const data = await response;
-
-    // 添加延迟再插入span
-    setTimeout(() => {
-      if (data.suggestion) {
-        const selection = window.getSelection();
-        const range = selection?.getRangeAt(0);
-        const currentNode = range?.startContainer;
-
-        // 获取光标偏移量
-        const isAtEnd = range?.startOffset === (currentNode as Text).length;
-
-        // 判断光标是否在本行末尾
-        if (isAtEnd) {
-          const span = document.createElement('span');
-          span.innerText = data.suggestion;
-          span.style.color = 'gray';
-          span.contentEditable = 'false';
-          span.id = 'suggestion-span'; // 设置特定id
-
-          range?.insertNode(span);
-
-          // 更新光标位置到span前面
-          range?.setStartBefore(span);
-          range?.collapse(true);
-          selection?.removeAllRanges();
-          selection?.addRange(range);
-
-          suggestion = data.suggestion;
-        }
-      }
-    }, 500); // 延迟500毫秒
+  try {
+    const response = await fetchSmartCompletion(inputText);
+    if (response.completion) {
+      completion = response.completion;
+      insertCompletionSpan(completion);
+    }
+  } catch (error) {
+    console.error('POST 请求失败：', error);
   }
 };
 
-const handleKeyDown = (event: KeyboardEvent) => {
+const handleKeyDown = (event: KeyboardEvent, target: HTMLDivElement) => {
   if (event.key === 'Tab') {
     event.preventDefault();
 
     // 查找具有特定id的span
-    const existingSpan = document.getElementById(
-      'suggestion-span',
+    const completionSpan = document.getElementById(
+      SMART_COMPLETION_SPAN_ID,
     ) as HTMLSpanElement;
-    if (existingSpan) {
-      // 创建一个文本节点
-      const textNode = document.createTextNode(suggestion);
 
+    if (completionSpan) {
       // 获取当前光标位置的range
       const selection = window.getSelection();
       const range = selection?.getRangeAt(0);
       if (range) {
-        // 替换span为文本节点
-        existingSpan.remove(); // 删除当前范围内的内容（如果有）
-        range.insertNode(textNode); // 插入文本节点
+        let innerSpanHtml = completionSpan.innerHTML;
+        completionSpan.remove();
+        target.innerHTML += innerSpanHtml; // 使用innerHTML保留格式
 
-        // 更新光标位置到文本末尾
-        range.setStartAfter(textNode);
+        // 更新光标位置到内容的末尾
+        range.setStartAfter(target?.lastChild ?? range.endContainer);
         range.collapse(true);
         selection?.removeAllRanges();
         selection?.addRange(range);
       }
     }
 
-    suggestion = '';
+    completion = '';
   } else {
-    const existingSpan = document.getElementById('suggestion-span');
-    if (existingSpan) {
-      existingSpan.remove(); // 删除span
+    const completionSpan = document.getElementById(SMART_COMPLETION_SPAN_ID);
+    if (completionSpan) {
+      completionSpan.remove(); // 删除span
     }
   }
 };
 
-const setupSmartCompose = async (elementId: string): Promise<void> => {
-  await transformTextAreaToEditableDiv(elementId);
-
-  const target = document.getElementById(elementId) as HTMLDivElement;
+const addEventHandler = (target: HTMLDivElement) => {
   if (!target) {
     return;
   }
 
-  const debouncedInput = debounce(handleInput, 200);
   let isComposing = false;
+  const debouncedInput = debounce(handleInput, 500);
   target.addEventListener('compositionstart', () => {
     isComposing = true; // 开始组合输入
   });
@@ -114,7 +91,47 @@ const setupSmartCompose = async (elementId: string): Promise<void> => {
     }
   });
 
-  target.addEventListener('keydown', handleKeyDown);
+  target.addEventListener('keydown', (e) => handleKeyDown(e, target));
 };
 
-setupSmartCompose('new_comment_field');
+const setupSmartCompose = async (selector: string): Promise<void> => {
+  await transformTextAreaToEditableDiv(selector);
+  let target: HTMLDivElement | null = null;
+  target = document.querySelector(selector) as HTMLDivElement;
+
+  if (target) {
+    addEventHandler(target);
+  }
+};
+
+const listenChromeStorage = () => {
+  try {
+    // 监听存储的开关状态变化
+    chrome.storage.sync.get('isEnabled', (data) => {
+      console.log('isEnabled', data);
+      if (data.isEnabled) {
+        targetInputSelectors.map((selector: string) =>
+          setupSmartCompose(selector),
+        );
+      }
+    });
+
+    // 监听开关状态的变化
+    chrome.storage.onChanged.addListener((changes) => {
+      console.log('changes', changes);
+      if (changes.isEnabled) {
+        if (changes.isEnabled.newValue) {
+          targetInputSelectors.map((selector: string) =>
+            setupSmartCompose(selector),
+          );
+        } else {
+          location.reload(); // 关闭时刷新页面以移除效果
+        }
+      }
+    });
+  } catch {
+    targetInputSelectors.map((selector: string) => setupSmartCompose(selector));
+  }
+};
+
+listenChromeStorage();

@@ -1,6 +1,6 @@
-export const transformTextAreaToEditableDiv = (elementId: string): void => {
-  if (document.getElementById(elementId)) {
-    const target = document.getElementById(elementId) as HTMLTextAreaElement;
+export const transformTextAreaToEditableDiv = (selector: string): void => {
+  if (document.querySelector(selector)) {
+    const target = document.querySelector(selector) as HTMLTextAreaElement;
     // 检查元素是否是 textarea
     if (target.tagName.toLowerCase() === 'textarea') {
       // 创建一个新的 div 元素
@@ -30,4 +30,30 @@ export const debounce = (
       func.apply(this, args);
     }, delay);
   };
+};
+
+export const insertCompletionSpan = (completion: string) => {
+  const selection = window.getSelection();
+  const range = selection?.getRangeAt(0);
+  const currentNode = range?.startContainer;
+
+  // 获取光标偏移量
+  const isAtEnd = range?.startOffset === (currentNode as Text).length;
+
+  // 判断光标是否在本行末尾
+  if (isAtEnd) {
+    const span = document.createElement('span');
+    span.innerText = completion;
+    span.style.color = 'gray';
+    span.contentEditable = 'false';
+    span.id = 'smart-completion-span'; // 设置特定id
+
+    range?.insertNode(span);
+
+    // 更新光标位置到span前面
+    range?.setStartBefore(span);
+    range?.collapse(true);
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+  }
 };
