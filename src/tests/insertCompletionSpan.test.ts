@@ -1,41 +1,96 @@
-import { insertCompletionSpan } from '../utils';
+import { insertCompletionSpan, isCursorAtEditableDivEnd } from '../utils';
 
-describe('insertCompletionSpan', () => {
+describe('EditableDiv Functions', () => {
+  let editableDiv: HTMLDivElement;
+  let range: Range;
+  let selection: Selection;
+
   beforeEach(() => {
-    // 创建一个可以编辑的 div，并添加到 DOM
-    document.body.innerHTML =
-      '<div contenteditable="true" id="editable-div">Hello </div>';
-    const editableDiv = document.getElementById('editable-div');
-    editableDiv.focus(); // 让 div 获得焦点
+    // 创建一个可编辑的 div
+    editableDiv = document.createElement('div');
+    editableDiv.contentEditable = 'true';
+    document.body.appendChild(editableDiv);
 
-    // 模拟用户的选择
-    const selection = window.getSelection();
-    const range = document.createRange();
-    range.setStart(editableDiv.firstChild, 6); // 将光标移动到 "Hello " 后
+    // 创建一个段落元素并添加到可编辑 div
+    const p = document.createElement('p');
+    p.textContent = 'Hello, world!';
+    editableDiv.appendChild(p);
+
+    // 创建一个范围并将光标放在段落的末尾
+    selection = window.getSelection()!;
+    range = document.createRange();
+    range.setStart(p.childNodes[0], (p.childNodes[0] as Text).length); // 光标在文本末尾
     range.collapse(true);
     selection.removeAllRanges();
     selection.addRange(range);
   });
 
   afterEach(() => {
-    document.body.innerHTML = ''; // 清理 DOM
+    // 清理 DOM
+    document.body.removeChild(editableDiv);
   });
 
-  it('should insert a completion span at the cursor position', () => {
-    insertCompletionSpan('World!');
-    const span = document.getElementById('smart-completion-span');
+  describe('isCursorAtEditableDivEnd', () => {
+    it('should return true when cursor is at the end of editable div', () => {
+      // 光标在文本节点末尾
+      const p = editableDiv.querySelector('p')!;
+      range.setStart(p.childNodes[0], (p.childNodes[0] as Text).length); // 光标在文本末尾
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
 
-    expect(span).toBeTruthy(); // 确保 span 被插入
-    expect(span.innerText).toBe('World!'); // 确保 span 内容正确
-    expect(span.style.color).toBe('gray'); // 确保颜色正确
+      expect(isCursorAtEditableDivEnd(range, editableDiv)).toBe(true);
+    });
+
+    it('should return false when cursor is not at the end', () => {
+      const p = editableDiv.querySelector('p')!;
+      range.setStart(p.childNodes[0], 5); // 光标在文本节点的中间
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+
+      expect(isCursorAtEditableDivEnd(range, editableDiv)).toBe(false);
+    });
+
+    it('should return false when cursor is outside the editable div', () => {
+      const anotherDiv = document.createElement('div');
+      document.body.appendChild(anotherDiv);
+      range.setStart(anotherDiv, 0); // 光标在其他 div
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+
+      expect(isCursorAtEditableDivEnd(range, editableDiv)).toBe(false);
+    });
   });
 
-  it('should update the cursor position after inserting the span', () => {
-    insertCompletionSpan('World!');
-    const selection = window.getSelection();
-    const range = selection.getRangeAt(0);
-    const currentNode = range.startContainer;
+  describe('insertCompletionSpan', () => {
+    it('should insert a span at the end of editable div', () => {
+      const p = editableDiv.querySelector('p')!;
+      range.setStart(p.childNodes[0], (p.childNodes[0] as Text).length); // 光标在文本节点末尾
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
 
-    expect(currentNode).toBeTruthy(); // 确保光标位置被更新
+      insertCompletionSpan('Test', editableDiv);
+
+      const span = editableDiv.querySelector('span');
+      expect(span).not.toBeNull();
+      expect(span!.textContent).toBe('Test');
+      expect(span!.style.color).toBe('gray');
+    });
+
+    it('should not insert a span when cursor is not at the end', () => {
+      const p = editableDiv.querySelector('p')!;
+      range.setStart(p.childNodes[0], 5); // 光标在文本节点的中间
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+
+      insertCompletionSpan('Test', editableDiv);
+
+      const span = editableDiv.querySelector('span');
+      expect(span).toBeNull(); // 不应插入 span
+    });
   });
 });

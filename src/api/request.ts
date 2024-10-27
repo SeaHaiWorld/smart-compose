@@ -37,10 +37,16 @@ function sendXMLRequest<T>(
         // 处理错误响应
         try {
           const errorResponse: XMLRequestError = JSON.parse(responseText);
-          const errorMessages = errorResponse.detail.map(e => e.msg).join(', ');
-          reject(new Error(`请求失败：${status} ${statusText} - ${errorMessages}`));
+          const errorMessages = errorResponse.detail
+            .map((e) => e.msg)
+            .join(', ');
+          reject(
+            new Error(`请求失败：${status} ${statusText} - ${errorMessages}`),
+          );
         } catch {
-          reject(new Error(`请求失败：${status} ${statusText} - 无法解析错误响应`));
+          reject(
+            new Error(`请求失败：${status} ${statusText} - 无法解析错误响应`),
+          );
         }
       }
     };

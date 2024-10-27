@@ -48,7 +48,7 @@ cd smart-compose
 npm install
 ```
 
-查看本地示例
+## 查看本地示例
 ```bash
 npm run dev
 ```
@@ -62,11 +62,10 @@ npm run build
 打开 Chrome 并访问 chrome://extensions/。
 
 通过右上角的开关启用 开发者模式。
-
+![alt text](image-2.png)
 点击 加载已解压的扩展程序，选择项目的 dist 文件夹。
 
-### 使用方法
-加载扩展后，访问包含目标 `<textarea>` 的网页。如访问一个github issue页面
+加载扩展后，访问包含目标 `<textarea>` 的网页。如访问一个github issue的评论页面
 
 点击工具栏中的扩展图标打开 SmartCompose 弹出界面。使用开关启用或禁用 SmartCompose 功能。
 ![alt text](image.png)

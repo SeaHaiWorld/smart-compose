@@ -6,14 +6,9 @@ import {
 } from './utils';
 
 let completion = '';
-const SMART_COMPLETION_SPAN_ID = 'smart-completion-span';
 
 // 需要 smart compose 的元素选择器
-const targetInputSelectors = [
-  '#new_comment_field',
-  '.tiptap',
-  '#contenteditable',
-];
+const targetInputSelectors = ['#new_comment_field', '#contenteditable'];
 
 const handleInput = async (target: HTMLDivElement): Promise<void> => {
   const inputText = target.innerText;
@@ -27,7 +22,7 @@ const handleInput = async (target: HTMLDivElement): Promise<void> => {
     const response = await fetchSmartCompletion(inputText);
     if (response.completion) {
       completion = response.completion;
-      insertCompletionSpan(completion);
+      insertCompletionSpan(completion, target);
     }
   } catch (error) {
     console.error('POST 请求失败：', error);
@@ -35,33 +30,33 @@ const handleInput = async (target: HTMLDivElement): Promise<void> => {
 };
 
 const handleKeyDown = (event: KeyboardEvent, target: HTMLDivElement) => {
+  const completionSpan = document.querySelector('#smart-completion-span');
   if (event.key === 'Tab') {
     event.preventDefault();
-
-    // 查找具有特定id的span
-    const completionSpan = document.getElementById(SMART_COMPLETION_SPAN_ID) as HTMLSpanElement;
-
+    // 获取当前光标位置的range
+    const selection = window.getSelection();
+    const range = selection?.getRangeAt(0);
     if (completionSpan) {
-      // 获取当前光标位置的range
-      const selection = window.getSelection();
-      const range = selection?.getRangeAt(0);
+      // 获取光标所在的父节点
       if (range) {
         const innerSpanHtml = completionSpan.innerHTML;
         completionSpan.remove();
-        target.innerHTML += innerSpanHtml; // 使用innerHTML保留格式
-
-        // 更新光标位置到内容的末尾
-        range.setStartAfter(target.lastChild ?? range.endContainer);
-        range.collapse(true);
-        selection?.removeAllRanges();
-        selection?.addRange(range);
+        const parentNode = (
+          target.lastChild.nodeType === Node.TEXT_NODE
+            ? target
+            : target.lastChild
+        ) as Element;
+        parentNode.innerHTML += innerSpanHtml; // 使用innerHTML保留格式
       }
     }
 
+    // 更新光标位置到内容的末尾
+    range.setStartAfter(target.lastChild ?? range.endContainer);
+    range.collapse(true);
+    selection?.removeAllRanges();
+    selection?.addRange(range);
     completion = '';
   } else {
-    // 删除span
-    const completionSpan = document.getElementById(SMART_COMPLETION_SPAN_ID);
     completionSpan?.remove();
   }
 };
@@ -82,7 +77,7 @@ const addEventHandler = (target: HTMLDivElement) => {
 
   target.addEventListener('input', () => {
     if (!isComposing) {
-      debouncedInput(target); // 仅在非组合输入时触发
+      debouncedInput(); // 仅在非组合输入时触发
     }
   });
 
@@ -100,25 +95,25 @@ const setupSmartCompose = async (selector: string): Promise<void> => {
 
 const listenChromeStorage = () => {
   try {
-    // 监听存储的开关状态变化
-    chrome.storage.sync.get('isEnabled', (data) => {
-      console.log('isEnabled', data);
-      if (data.isEnabled) {
-        targetInputSelectors.forEach(setupSmartCompose);
-      }
-    });
-
-    // 监听开关状态的变化
-    chrome.storage.onChanged.addListener((changes) => {
-      console.log('changes', changes);
-      if (changes.isEnabled) {
-        if (changes.isEnabled.newValue) {
+    if (chrome) {
+      // 监听存储的开关状态变化
+      chrome.storage.sync.get('isEnabled', (data) => {
+        if (data.isEnabled) {
           targetInputSelectors.forEach(setupSmartCompose);
-        } else {
-          location.reload(); // 关闭时刷新页面以移除效果
         }
-      }
-    });
+      });
+
+      // 监听开关状态的变化
+      chrome.storage.onChanged.addListener((changes) => {
+        if (changes.isEnabled) {
+          if (changes.isEnabled.newValue) {
+            targetInputSelectors.forEach(setupSmartCompose);
+          } else {
+            location.reload(); // 关闭时刷新页面以移除效果
+          }
+        }
+      });
+    }
   } catch {
     targetInputSelectors.forEach(setupSmartCompose);
   }
